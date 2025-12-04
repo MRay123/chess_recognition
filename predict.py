@@ -37,7 +37,7 @@ folder_to_fen = {
 num_classes = 13
 model = models.resnet18(weights=None)  # avoids deprecated pretrained warning
 model.fc = torch.nn.Linear(model.fc.in_features, num_classes)
-model.load_state_dict(torch.load("chess_square_resnet18.pth", map_location=device))
+model.load_state_dict(torch.load("chess_square_resnet18_v2.pth", map_location=device))
 model = model.to(device)
 model.eval()
 
@@ -104,7 +104,7 @@ def predict_board_from_image(img_path):
 # Main
 # ----------------------------
 if __name__ == "__main__":
-    img_path = "data/sample_boards/1B1K4-1p3k2-2R5-8-5B1Q-3P2b1-2q3Pp-7b.jpeg"
+    img_path = "data/sample_boards/1b1K2R1-6P1-8-B7-8-8-6k1-8.jpeg"
     board_state, fen, top_down_board = predict_board_from_image(img_path)
     
     print("Predicted FEN:", fen)
