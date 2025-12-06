@@ -8,9 +8,6 @@ from PIL import Image
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-# ----------------------------
-# Load training dataset to get folder mapping
-# ----------------------------
 train_data = datasets.ImageFolder("data/train")
 idx_to_folder = {v: k for k,v in train_data.class_to_idx.items()}
 
@@ -31,26 +28,22 @@ folder_to_fen = {
     "black_king": "k"
 }
 
-# ----------------------------
-# Load ResNet18 model
-# ----------------------------
+
 num_classes = 13
-model = models.resnet18(weights=None)  # avoids deprecated pretrained warning
+model = models.resnet18(weights=None)  
 model.fc = torch.nn.Linear(model.fc.in_features, num_classes)
-model.load_state_dict(torch.load("chess_square_resnet18_v2.pth", map_location=device))
+model.load_state_dict(torch.load("models/chess_square_resnet18_v3_epoch20.pth", map_location=device))
 model = model.to(device)
 model.eval()
 
-# Transforms for ResNet18
+
 transform_square = transforms.Compose([
     transforms.Resize((224,224)),
     transforms.ToTensor(),
     transforms.Normalize([0.485,0.456,0.406], [0.229,0.224,0.225])
 ])
 
-# ----------------------------
-# Convert board_state with symbols to FEN string
-# ----------------------------
+
 def board_to_fen(board_state):
     """Convert 8x8 array of FEN symbols to a FEN string."""
     fen_rows = []
@@ -70,17 +63,14 @@ def board_to_fen(board_state):
         fen_rows.append(fen_row)
     return "/".join(fen_rows)
 
-# ----------------------------
-# Prediction function
-# ----------------------------
+
 def predict_board_from_image(img_path):
-    # Extract squares & top-down board image
+    
     squares, top_down_board = extract_squares_from_board(img_path)
     
-    # Predict each square
+    
     board_state = []
     for sq in squares:
-        # Convert from OpenCV BGR numpy array to PIL RGB Image
         sq_rgb = cv2.cvtColor(sq, cv2.COLOR_BGR2RGB)
         sq_pil = Image.fromarray(sq_rgb)
         
@@ -90,7 +80,6 @@ def predict_board_from_image(img_path):
             out = model(inp)
             _, pred = torch.max(out,1)
         
-        # Map prediction index → folder name → FEN symbol
         pred_folder_name = idx_to_folder[pred.item()]
         pred_symbol = folder_to_fen[pred_folder_name]
         board_state.append(pred_symbol)
@@ -100,11 +89,13 @@ def predict_board_from_image(img_path):
     
     return board_state, fen, top_down_board
 
-# ----------------------------
-# Main
-# ----------------------------
+def predict_board_fen(img_path: str) -> str:
+    board_state, fen, top_down_board = predict_board_from_image(img_path)
+    return fen
+
+
 if __name__ == "__main__":
-    img_path = "data/sample_boards/1b1K2R1-6P1-8-B7-8-8-6k1-8.jpeg"
+    img_path = "data/sample_boards/1K6-8-4q3-1nP3k1-4r1B1-1q1n2q1-2RB4-1q1r4.jpeg"
     board_state, fen, top_down_board = predict_board_from_image(img_path)
     
     print("Predicted FEN:", fen)

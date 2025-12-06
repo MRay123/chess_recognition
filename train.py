@@ -8,22 +8,18 @@ from torch.cuda.amp import GradScaler, autocast
 import os
 
 
-# ============================================================
-# Settings
-# ============================================================
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 train_dir = "data/train"
 val_dir = "data/val"
 
 num_classes = 13
 batch_size = 32
-num_epochs = 29
-model_save_path = "chess_square_resnet18_v2.pth"
+num_epochs = 25
+model_save_path = "models/chess_square_resnet18_v4_epoch25.pth"
 
 
-# ============================================================
-# Data Augmentation
-# ============================================================
+
 transform_train = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.RandomHorizontalFlip(p=0.5),
@@ -41,9 +37,6 @@ transform_val = transforms.Compose([
 ])
 
 
-# ============================================================
-# Datasets & Dataloaders
-# ============================================================
 train_data = datasets.ImageFolder(train_dir, transform=transform_train)
 val_data = datasets.ImageFolder(val_dir, transform=transform_val)
 
@@ -51,26 +44,22 @@ train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
 
 
-# ============================================================
-# Model Setup
-# ============================================================
 model = models.resnet18(pretrained=True)
 
-# Replace classifier
+
 model.fc = nn.Linear(model.fc.in_features, num_classes)
 
-# Strategy:
-# Freeze first half of the network, unfreeze last 2 residual blocks + classifier
+
 for name, param in model.named_parameters():
-    param.requires_grad = False  # freeze all
+    param.requires_grad = False  
 
 for name, param in model.layer3.named_parameters():
-    param.requires_grad = True   # unfreeze layer3
+    param.requires_grad = True   
 for name, param in model.layer4.named_parameters():
-    param.requires_grad = True   # unfreeze layer4
+    param.requires_grad = True   
 
 for param in model.fc.parameters():
-    param.requires_grad = True   # unfreeze classifier
+    param.requires_grad = True   
 
 model = model.to(device)
 
@@ -80,12 +69,10 @@ for name, p in model.named_parameters():
         print("  ", name)
 
 
-# ============================================================
-# Loss, Optimizer, Scheduler
-# ============================================================
+
 criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
 
-# Differential learning rates:
+
 optimizer = optim.Adam([
     {"params": model.layer3.parameters(), "lr": 1e-4},
     {"params": model.layer4.parameters(), "lr": 1e-4},
@@ -94,12 +81,10 @@ optimizer = optim.Adam([
 
 scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=5, T_mult=2)
 
-scaler = GradScaler()  # mixed precision
+scaler = GradScaler()  
 
 
-# ============================================================
-# Training Loop
-# ============================================================
+
 best_val_acc = 0.0
 
 for epoch in range(num_epochs):
@@ -111,7 +96,7 @@ for epoch in range(num_epochs):
 
         optimizer.zero_grad()
 
-        with autocast():  # mixed precision
+        with autocast():  
             outputs = model(images)
             loss = criterion(outputs, labels)
 
@@ -122,12 +107,9 @@ for epoch in range(num_epochs):
         running_loss += loss.item() * images.size(0)
 
     epoch_loss = running_loss / len(train_data)
-    scheduler.step(epoch)  # Update LR schedule
+    scheduler.step(epoch)  
 
 
-    # -------------------------
-    # Validation
-    # -------------------------
     model.eval()
     correct = total = 0
 
@@ -144,9 +126,7 @@ for epoch in range(num_epochs):
     print(f"Epoch [{epoch+1}/{num_epochs}] "
           f"Loss: {epoch_loss:.4f} | Val Acc: {val_acc:.4f}")
 
-    # -------------------------
-    # Save best model
-    # -------------------------
+
     if val_acc > best_val_acc:
         best_val_acc = val_acc
         torch.save(model.state_dict(), model_save_path)

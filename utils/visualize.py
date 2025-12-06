@@ -28,10 +28,6 @@ def display_board_from_fen(fen):
 import matplotlib.pyplot as plt
 
 def visualize_board_overlay(board_img, board_state):
-    """
-    board_img: top-down board image (numpy array)
-    board_state: 8x8 array of FEN symbols (strings)
-    """
     img = board_img.copy()
     h, w = img.shape[:2]
     square_h = h // 8
