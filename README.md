@@ -4,7 +4,7 @@
 
     
     pip install -r requirements.txt
-    ```
+    
     
 # Next, if you want to run the final model, run this. It will run the model on 1000 test images and FEN numbers.
 
